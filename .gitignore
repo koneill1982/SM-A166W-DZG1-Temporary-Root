@@ -1,0 +1,13 @@
+*.apk
+*.ko
+*.so
+*.zip
+*.tar
+*.tar.gz
+*.tar.xz
+build/
+kernel-out/
+target/
+__pycache__/
+.idea/
+.vscode/

