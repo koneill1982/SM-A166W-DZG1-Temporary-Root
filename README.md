@@ -1,7 +1,14 @@
-# Samsung SM-A166W DZG1 temporary KernelSU root
+# Samsung Galaxy A16 5G SM-A166W root — GhostLock + KernelSU
 
-Device-tested release for one exact Samsung Galaxy A16 5G firmware. This is
-not a generic Galaxy A16 package.
+Device-tested temporary root method for the Canadian Samsung Galaxy A16 5G
+SM-A166W running firmware `A166WVLS8DZG1`. It uses GhostLock
+(`CVE-2026-43499`) to gain root and late-load KernelSU v3.2.5 without
+flashing the boot, init_boot, vendor_boot, recovery, or vbmeta partitions.
+
+This repository is for people looking for a **Samsung Galaxy A16 root**,
+**Galaxy A16 5G root**, or **SM-A166W root** method. It is not a generic
+Galaxy A16 package: the included binaries and offsets support only the exact
+build below.
 
 ## Exact supported build
 
@@ -90,6 +97,18 @@ It caps the exploit at one attempt.
 After a successful run, open KernelSU Manager and grant root only to apps you
 trust. Re-run the launcher after every reboot if temporary root is still
 wanted.
+
+## Optional KernelSU module
+
+The repository also includes an optional
+[A16 Samsung OTA Blocker](modules/a16-ota-blocker/) KernelSU module for users
+who want to remain on their current Samsung firmware. It blocks the normal
+Samsung OTA agents and automatic OTA scheduling without affecting Play Store
+or Galaxy Store app updates.
+
+The OTA blocker is separate from the root exploit and is not an absolute
+anti-update mechanism. Manual Odin/recovery flashing or a factory reset can
+bypass or remove it.
 
 ## Verification
 

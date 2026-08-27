@@ -1,0 +1,6 @@
+id=a16_ota_blocker
+name=A16 Samsung OTA Blocker
+version=v1.0
+versionCode=100
+author=jojobear691
+description=Blocks Samsung firmware OTA checks, downloads, and automatic installation on the SM-A166W. Action button toggles blocking on or off.
