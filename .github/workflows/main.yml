@@ -1,5 +1,5 @@
-# Build .so, ksud, and .ko artifacts
-name: Build .so, ksud, and .ko
+# Build .so, ksud, and .apk artifacts
+name: Build .so, ksud, and .apk
 
 on:
   push:
@@ -120,34 +120,30 @@ jobs:
           # Collect produced ksud binaries (common names)
           find . -type f \( -name ksud -o -name "ksud*" \) -executable -exec cp --parents {} $OUT_DIR/ \; || true
 
-      - name: Build kernel module (.ko)
-        shell: bash
+      - name: Build APK
         run: |
           set -e
-          echo "Building .ko kernel modules..."
+          echo "Building APK..."
 
-          # If a helper script exists, prefer it
-          if [ -f ./build-ko.sh ]; then
-            chmod +x ./build-ko.sh
-            ./build-ko.sh || true
+          # Gradle build for APK
+          if [ -f ./gradlew ]; then
+            chmod +x ./gradlew
+            ./gradlew assembleRelease assembleDebug || true
+            find . -name "*.apk" -exec cp --parents {} $OUT_DIR/ \; || true
           fi
 
-          # If KERNEL_DIR provided and exists, attempt out-of-tree build
-          if [ -n "$KERNEL_DIR" ] && [ -d "$KERNEL_DIR" ]; then
-            echo "KERNEL_DIR provided: $KERNEL_DIR"
-            make -C "$KERNEL_DIR" M=$PWD ARCH=${KERNEL_ARCH:-} CROSS_COMPILE=${CROSS_COMPILE:-} modules || true
-            find . -name "*.ko" -exec cp --parents {} $OUT_DIR/ \; || true
-          else
-            # Try Makefile module targets in repo
-            if [ -f Makefile ]; then
-              if make -n ko >/dev/null 2>&1; then
-                make ko || true
-                find . -name "*.ko" -exec cp --parents {} $OUT_DIR/ \; || true
-              fi
-              if make -n modules >/dev/null 2>&1; then
-                make modules || true
-                find . -name "*.ko" -exec cp --parents {} $OUT_DIR/ \; || true
-              fi
+          # Repository-provided script
+          if [ -f ./build-apk.sh ]; then
+            chmod +x ./build-apk.sh
+            ./build-apk.sh || true
+            find . -name "*.apk" -exec cp --parents {} $OUT_DIR/ \; || true
+          fi
+
+          # Generic Makefile target 'apk'
+          if [ -f Makefile ]; then
+            if make -n apk >/dev/null 2>&1; then
+              make apk || true
+              find . -name "*.apk" -exec cp --parents {} $OUT_DIR/ \; || true
             fi
           fi
 
