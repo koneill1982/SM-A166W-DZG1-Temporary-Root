@@ -1,1 +1,163 @@
+# Build .so, ksud, and .ko artifacts
+name: Build .so, ksud, and .ko
 
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      kernel_dir:
+        description: 'Path to kernel build directory (for building .ko). Optional'
+        required: false
+        default: ''
+      cross_compile:
+        description: 'CROSS_COMPILE prefix to use (e.g. aarch64-linux-gnu-). Optional'
+        required: false
+        default: ''
+      kernel_arch:
+        description: 'Kernel ARCH (e.g. arm64). Optional'
+        required: false
+        default: ''
+
+jobs:
+  build:
+    name: Build artifacts
+    runs-on: ubuntu-latest
+    env:
+      OUT_DIR: build-artifacts
+      KERNEL_DIR: ${{ github.event.inputs.kernel_dir }}
+      CROSS_COMPILE: ${{ github.event.inputs.cross_compile }}
+      KERNEL_ARCH: ${{ github.event.inputs.kernel_arch }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential clang lld gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu pkg-config git curl unzip
+          # Install rustup if missing
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+            source $HOME/.cargo/env
+          fi
+
+      - name: Set up JDK (for Kotlin / Gradle builds)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - name: Create output directory
+        run: mkdir -p $OUT_DIR
+
+      - name: Build shared libraries (.so)
+        run: |
+          set -e
+          echo "Building .so artifacts..."
+
+          # Gradle / Android library
+          if [ -f ./gradlew ]; then
+            chmod +x ./gradlew
+            ./gradlew assembleRelease || true
+            find . -name "*.so" -exec cp --parents {} $OUT_DIR/ \; || true
+          fi
+
+          # Repository-provided script
+          if [ -f ./build-so.sh ]; then
+            chmod +x ./build-so.sh
+            ./build-so.sh || true
+            find . -name "*.so" -exec cp --parents {} $OUT_DIR/ \; || true
+          fi
+
+          # Rust cargo producing a .so (if any)
+          if [ -f Cargo.toml ]; then
+            rustup target add aarch64-linux-android || true
+            cargo build --release || true
+            find target -name "*.so" -exec cp --parents {} $OUT_DIR/ \; || true
+          fi
+
+          # Generic Makefile target 'so'
+          if [ -f Makefile ]; then
+            if make -n so >/dev/null 2>&1; then
+              make so || true
+              find . -name "*.so" -exec cp --parents {} $OUT_DIR/ \; || true
+            fi
+          fi
+
+      - name: Build ksud (user-space daemon/binary)
+        run: |
+          set -e
+          echo "Building ksud..."
+
+          # Repository-provided script
+          if [ -f ./build-ksud.sh ]; then
+            chmod +x ./build-ksud.sh
+            ./build-ksud.sh || true
+          fi
+
+          # Makefile target
+          if [ -f Makefile ]; then
+            if make -n ksud >/dev/null 2>&1; then
+              make ksud || true
+            fi
+          fi
+
+          # Cargo binary
+          if [ -f Cargo.toml ]; then
+            cargo build --release || true
+          fi
+
+          # Collect produced ksud binaries (common names)
+          find . -type f \( -name ksud -o -name "ksud*" \) -executable -exec cp --parents {} $OUT_DIR/ \; || true
+
+      - name: Build kernel module (.ko)
+        shell: bash
+        run: |
+          set -e
+          echo "Building .ko kernel modules..."
+
+          # If a helper script exists, prefer it
+          if [ -f ./build-ko.sh ]; then
+            chmod +x ./build-ko.sh
+            ./build-ko.sh || true
+          fi
+
+          # If KERNEL_DIR provided and exists, attempt out-of-tree build
+          if [ -n "$KERNEL_DIR" ] && [ -d "$KERNEL_DIR" ]; then
+            echo "KERNEL_DIR provided: $KERNEL_DIR"
+            make -C "$KERNEL_DIR" M=$PWD ARCH=${KERNEL_ARCH:-} CROSS_COMPILE=${CROSS_COMPILE:-} modules || true
+            find . -name "*.ko" -exec cp --parents {} $OUT_DIR/ \; || true
+          else
+            # Try Makefile module targets in repo
+            if [ -f Makefile ]; then
+              if make -n ko >/dev/null 2>&1; then
+                make ko || true
+                find . -name "*.ko" -exec cp --parents {} $OUT_DIR/ \; || true
+              fi
+              if make -n modules >/dev/null 2>&1; then
+                make modules || true
+                find . -name "*.ko" -exec cp --parents {} $OUT_DIR/ \; || true
+              fi
+            fi
+          fi
+
+      - name: List artifacts
+        run: |
+          echo "Artifacts in $OUT_DIR:"
+          ls -R $OUT_DIR || true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: $OUT_DIR
