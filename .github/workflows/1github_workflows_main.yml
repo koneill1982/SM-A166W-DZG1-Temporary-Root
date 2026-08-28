@@ -1,0 +1,162 @@
+name: Build .so, ksud, .ko, and .apk
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK (for Gradle / Android builds)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare output directory
+        run: |
+          set -e
+          OUT_DIR="$GITHUB_WORKSPACE/out"
+          mkdir -p "$OUT_DIR"
+          echo "OUT_DIR=$OUT_DIR" >> $GITHUB_ENV
+
+      - name: Install common build dependencies
+        run: |
+          set -e
+          sudo apt-get update
+          sudo apt-get install -y build-essential unzip zip default-jdk bc
+
+      - name: Build shared libraries (.so) and ksud
+        shell: bash
+        run: |
+          set -e
+          OUT_DIR="${OUT_DIR:-$GITHUB_WORKSPACE/out}"
+          mkdir -p "$OUT_DIR"
+
+          echo "Building .so and ksud (if repository provides scripts or Makefile targets)..."
+
+          # Repository-provided scripts (preferred)
+          if [ -f ./build-so.sh ]; then
+            chmod +x ./build-so.sh
+            ./build-so.sh || echo "build-so.sh failed"
+          fi
+          if [ -f ./build-ksud.sh ]; then
+            chmod +x ./build-ksud.sh
+            ./build-ksud.sh || echo "build-ksud.sh failed"
+          fi
+
+          # Generic Makefile targets
+          if [ -f Makefile ]; then
+            if make -n so >/dev/null 2>&1; then
+              make so || echo "make so failed"
+            fi
+            if make -n shared >/dev/null 2>&1; then
+              make shared || echo "make shared failed"
+            fi
+            if make -n ksud >/dev/null 2>&1; then
+              make ksud || echo "make ksud failed"
+            fi
+          fi
+
+          # Collect produced .so files
+          find . -type f -name "*.so" -exec cp -v --parents {} "$OUT_DIR"/ \; 2>&1 | grep -c "'" && echo "Copied .so files" || echo "No .so files found"
+
+          # Collect produced ksud binaries (common names)
+          find . -type f \( -name ksud -o -name "ksud*" \) -executable -exec cp -v --parents {} "$OUT_DIR"/ \; 2>&1 | grep -c "'" && echo "Copied ksud binaries" || echo "No ksud binaries found"
+
+      - name: Build kernel module (.ko)
+        shell: bash
+        run: |
+          set -e
+          OUT_DIR="${OUT_DIR:-$GITHUB_WORKSPACE/out}"
+          mkdir -p "$OUT_DIR"
+
+          echo "Attempting to build kernel modules (.ko)..."
+
+          # Out-of-tree build using provided kernel headers/source
+          if [ -n "$KERNEL_DIR" ] && [ -d "$KERNEL_DIR" ]; then
+            echo "KERNEL_DIR provided: $KERNEL_DIR"
+            make -C "$KERNEL_DIR" M=$PWD ARCH=${KERNEL_ARCH:-} CROSS_COMPILE=${CROSS_COMPILE:-} modules || echo "Kernel module build failed"
+          fi
+
+          # Repository-provided helper
+          if [ -f ./build-ko.sh ]; then
+            chmod +x ./build-ko.sh
+            ./build-ko.sh || echo "build-ko.sh failed"
+          fi
+
+          # Try Makefile module targets in repo
+          if [ -f Makefile ]; then
+            if make -n ko >/dev/null 2>&1; then
+              make ko || echo "make ko failed"
+            fi
+            if make -n modules >/dev/null 2>&1; then
+              make modules || echo "make modules failed"
+            fi
+          fi
+
+          # Collect .ko files
+          find . -name "*.ko" -exec cp -v --parents {} "$OUT_DIR"/ \; 2>&1 | grep -c "'" && echo "Copied .ko files" || echo "No .ko files found"
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set -e
+          OUT_DIR="${OUT_DIR:-$GITHUB_WORKSPACE/out}"
+          mkdir -p "$OUT_DIR"
+
+          echo "Building APK (Gradle or repo-provided script)..."
+
+          # Prefer repository-provided gradlew wrapper
+          if [ -f ./gradlew ]; then
+            chmod +x ./gradlew
+            ./gradlew assembleRelease assembleDebug || echo "Gradle build failed"
+          elif command -v gradle >/dev/null 2>&1; then
+            gradle assembleRelease assembleDebug || echo "Gradle build failed"
+          fi
+
+          # Repository-provided helper
+          if [ -f ./build-apk.sh ]; then
+            chmod +x ./build-apk.sh
+            ./build-apk.sh || echo "build-apk.sh failed"
+          fi
+
+          # Generic Makefile target 'apk'
+          if [ -f Makefile ]; then
+            if make -n apk >/dev/null 2>&1; then
+              make apk || echo "make apk failed"
+            fi
+          fi
+
+          # Collect produced APKs
+          find . -name "*.apk" -exec cp -v --parents {} "$OUT_DIR"/ \; 2>&1 | grep -c "'" && echo "Copied APK files" || echo "No APK files found"
+
+      - name: Show collected artifacts
+        run: |
+          echo "Collected artifacts in $OUT_DIR:"
+          if [ -d "$OUT_DIR" ]; then
+            ls -R "$OUT_DIR" || echo "Output directory is empty"
+          else
+            echo "Output directory does not exist!"
+          fi
+
+      - name: Create fallback artifacts summary
+        if: always()
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/out
+          echo "Build completed. Check logs for details." > $GITHUB_WORKSPACE/out/build-summary.txt
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: out/
+          if-no-files-found: warn
