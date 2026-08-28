@@ -65,11 +65,21 @@ jobs:
             fi
           fi
 
-          # Collect produced .so files
-          find . -type f -name "*.so" -exec cp -v --parents {} "$OUT_DIR"/ \; 2>&1 | grep -c "'" && echo "Copied .so files" || echo "No .so files found"
+          # Collect produced .so files (robust copying)
+          find . -type f -name "*.so" -print0 | xargs -0 -r -I{} cp -v --parents "{}" "$OUT_DIR"/ || true
+          if [ "$(find "$OUT_DIR" -type f -name "*.so" | wc -l)" -gt 0 ]; then
+            echo "Copied .so files"
+          else
+            echo "No .so files found"
+          fi
 
           # Collect produced ksud binaries (common names)
-          find . -type f \( -name ksud -o -name "ksud*" \) -executable -exec cp -v --parents {} "$OUT_DIR"/ \; 2>&1 | grep -c "'" && echo "Copied ksud binaries" || echo "No ksud binaries found"
+          find . -type f \( -name ksud -o -name "ksud*" \) -executable -print0 | xargs -0 -r -I{} cp -v --parents "{}" "$OUT_DIR"/ || true
+          if [ "$(find "$OUT_DIR" -type f -name "ksud*" | wc -l)" -gt 0 ]; then
+            echo "Copied ksud binaries"
+          else
+            echo "No ksud binaries found"
+          fi
 
       - name: Build kernel module (.ko)
         shell: bash
@@ -102,8 +112,13 @@ jobs:
             fi
           fi
 
-          # Collect .ko files
-          find . -name "*.ko" -exec cp -v --parents {} "$OUT_DIR"/ \; 2>&1 | grep -c "'" && echo "Copied .ko files" || echo "No .ko files found"
+          # Collect .ko files (robust copying)
+          find . -name "*.ko" -print0 | xargs -0 -r -I{} cp -v --parents "{}" "$OUT_DIR"/ || true
+          if [ "$(find "$OUT_DIR" -type f -name "*.ko" | wc -l)" -gt 0 ]; then
+            echo "Copied .ko files"
+          else
+            echo "No .ko files found"
+          fi
 
       - name: Build APK
         shell: bash
@@ -135,8 +150,13 @@ jobs:
             fi
           fi
 
-          # Collect produced APKs
-          find . -name "*.apk" -exec cp -v --parents {} "$OUT_DIR"/ \; 2>&1 | grep -c "'" && echo "Copied APK files" || echo "No APK files found"
+          # Collect produced APKs (robust copying)
+          find . -name "*.apk" -print0 | xargs -0 -r -I{} cp -v --parents "{}" "$OUT_DIR"/ || true
+          if [ "$(find "$OUT_DIR" -type f -name "*.apk" | wc -l)" -gt 0 ]; then
+            echo "Copied APK files"
+          else
+            echo "No APK files found"
+          fi
 
       - name: Show collected artifacts
         run: |
