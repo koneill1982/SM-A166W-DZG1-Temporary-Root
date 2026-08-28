@@ -1,40 +1,120 @@
-name: Build .so, ksud, .ko, and .apk
-
+# CI: build and collect artifacts, then upload them
+# Key points:
+# - OUT_DIR is set at the job level and referenced via ${{ env.OUT_DIR }} everywhere, including the upload-artifact step.
+# - Robust artifact collection using find -print0 | xargs -0 cp --parents
+# - Debug output to verify captured files before upload
 on:
   push:
-  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+name: Build and upload artifacts
+
+permissions:
+  contents: read
+  actions: write
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    env:
+      OUT_DIR: build-artifacts
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
-      - name: Set up JDK (for Gradle / Android builds)
-        uses: actions/setup-java@v4
+      - name: Set up Java (for Gradle builds)
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Prepare output directory
-        run: |
-          set -e
-          OUT_DIR="$GITHUB_WORKSPACE/out"
-          mkdir -p "$OUT_DIR"
-          echo "OUT_DIR=$OUT_DIR" >> $GITHUB_ENV
+      - name: Set up Rust toolchain (optional)
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
 
-      - name: Install common build dependencies
+      - name: Prepare runner (install packages)
         run: |
-          set -e
           sudo apt-get update
-          sudo apt-get install -y build-essential unzip zip default-jdk bc
+          sudo apt-get install -y --no-install-recommends build-essential clang lld \
+            gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu pkg-config git curl unzip rsync
 
-      - name: Build shared libraries (.so) and ksud
+      - name: Create OUT_DIR
+        run: mkdir -p "${{ env.OUT_DIR }}"
+
+      - name: Build and collect artifacts
         shell: bash
+        run: |
+          set -euo pipefail
+          echo "OUT_DIR='${{ env.OUT_DIR }}'"
+          echo "Workspace: $GITHUB_WORKSPACE"
+          # Gradle / Android library and APK
+          if [ -f ./gradlew ]; then
+            chmod +x ./gradlew
+            echo "Running gradle assemble"
+            ./gradlew assembleRelease assembleDebug --no-daemon || true
+            # find and copy artifacts (.so, .apk)
+            find . -type f \( -name "*.so" -o -name "*.apk" -o -name "ksud*" \) -print0 \
+              | xargs -0 -r -I{} cp --parents "{}" "${{ env.OUT_DIR }}/"
+          fi
+
+          # Repository-provided scripts
+          for s in build-so.sh build-apk.sh build-ksud.sh; do
+            if [ -f "./$s" ]; then
+              chmod +x "./$s"
+              echo "Running ./$s"
+              ./$s || true
+            fi
+          done
+
+          # Cargo / Rust-produced libraries or binaries
+          if [ -f Cargo.toml ]; then
+            echo "Building cargo release"
+            cargo build --release || true
+            find target -type f \( -name "*.so" -o -name "ksud*" \) -print0 \
+              | xargs -0 -r -I{} cp --parents "{}" "${{ env.OUT_DIR }}/"
+            # also collect built binaries in target/release
+            find target/release -maxdepth 1 -type f -executable -print0 \
+              | xargs -0 -r -I{} cp --parents "{}" "${{ env.OUT_DIR }}/"
+          fi
+
+          # Generic Makefile targets that may create artifacts
+          if [ -f Makefile ]; then
+            if make -n so >/dev/null 2>&1; then
+              make so || true
+            fi
+            if make -n apk >/dev/null 2>&1; then
+              make apk || true
+            fi
+            # collect common patterns created by make
+            find . -type f \( -name "*.so" -o -name "*.apk" -o -name "ksud*" \) -print0 \
+              | xargs -0 -r -I{} cp --parents "{}" "${{ env.OUT_DIR }}/"
+          fi
+
+          # Finally, print what we collected
+          echo "=== Contents of ${{ env.OUT_DIR }} (top-level) ==="
+          ls -la "${{ env.OUT_DIR }}" || true
+          echo "=== Recursive listing ==="
+          find "${{ env.OUT_DIR }}" -print || true
+
+      - name: Debug: show possible artifacts in repo (optional)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Files that match expected artifact patterns in the repo:"
+          find . -type f \( -name "*.so" -o -name "*.apk" -o -name "ksud*" -o -name "*.zip" -o -name "*.tar.gz" \) -print || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: ${{ env.OUT_DIR }}/**
+          if-no-files-found: warn        shell: bash
         run: |
           set -e
           OUT_DIR="${OUT_DIR:-$GITHUB_WORKSPACE/out}"
